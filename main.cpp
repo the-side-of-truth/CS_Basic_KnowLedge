@@ -3,7 +3,6 @@
 #include<iostream>
 #include "1_lexer.h"
 #include "2_AST.h"
-#include "3_CodeGener.h"
 #include <vector>
 #include <string>
 using namespace std;
