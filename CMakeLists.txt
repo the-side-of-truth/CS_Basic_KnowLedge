@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 project ("WanhuaTong")
 
+include_directories("D:\\Code\\LLVM\\llvm-project\\llvm\\include")
+
 # 将源代码添加到此项目的可执行文件。
 AUX_SOURCE_DIRECTORY(. src) # 添加当前目录下的所有文件
 ADD_EXECUTABLE(main ${src})
