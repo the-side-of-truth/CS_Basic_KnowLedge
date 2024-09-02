@@ -1,2 +1,2 @@
-# self_Kaleidoscope
-LLVM官方万花筒(Kaleidoscope)项目
+# 计科基础知识
+记录秋招八股学习过程
