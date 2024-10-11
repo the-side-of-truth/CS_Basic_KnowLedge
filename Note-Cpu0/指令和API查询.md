@@ -78,7 +78,28 @@ InstrItinClass 是 LLVM 后端中用于描述处理器指令流水线行为的�
 
 # 2. 指令选择类
 
-## 2.1 SDLoc
+## 2.1 SelDAG类常见成员和方法
+
+### 常见值类型
+
+#### MVT
+ - 定义：MVT 是用于表示机器级别的数据类型，主要用于 LLVM 后端中的 SelectionDAG 和指令生成阶段。它用于描述机器指令支持的数据类型。
+ - 功能：MVT 定义了各种数据类型，例如整型、浮点型、向量等，以便在低级别上进行优化和指令选择。
+ - 例子：
+	- MVT::i32：表示 32 位整数。
+	- MVT::f64：表示 64 位浮点数。
+	- MVT::v4i32：表示包含 4 个 32 位整数的向量。
+
+#### EVT
+是一种扩展的值类型，可以表达处理器中不存在的类型
+
+ - 定义：EVT 是用于表示元素级别的数据类型，主要用于 LLVM IR 中，用于描述函数的返回值、参数和其他元素的类型。
+ - 功能：EVT 主要用于类型系统和类型检查，它更关注于抽象的类型定义，而不是具体的机器实现。
+ - 例子：
+	- EVT::getInteger(32)：表示 32 位整数。
+	- EVT::getFloat(64)：表示 64 位浮点数。
+	- EVT::getVector(4, EVT::getInteger(32))：表示包含 4 个 32 位整数的向量。
+###(1) 类型SDLoc
 主要包含了SDNode源代码的位置和调试信息，可以定位一个Node对应在IR中的位置。
 
 用法：
@@ -87,15 +108,46 @@ InstrItinClass 是 LLVM 后端中用于描述处理器指令流水线行为的�
     SDValue NewNode = DAG.getNode(ISD::SUB, DL, MVT::i32, Operand1, Operand2);
 信息会保留在新的节点中,DL也会携带新节点的信息
 
-## 2.2 SDTypeProfile
+###(2) 类型SDValue
 
-这是用在.td中的，是节点的类型配置文件，用来约束操作数数量和类型。
+ - 定义：SDValue 是一个轻量级的封装类，用于表示对 SDNode 的引用。它可以看作是对 SDNode 的一个指针，通常用于简化对节点的操作。
+ - 功能：
+ 	- SDValue 本身不存储数据或状态，而是持有对 SDNode 的引用。
+	- 它提供了一种简洁的方式来处理和传递节点，特别是在生成和连接节点时。
+	- 可以用于表示节点的值或结果，通常在 DAG 操作中被广泛使用。
 
-	def SDT_Cpu0DivRem : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisSameAs<0, 1>] >;
+###(3) 类型SDNode
 
-这里0表示输出数量为0，2表示输入数量为2，SDTCinInt<0>限制第0个操作数是int型，SDTCisSameAs<0, 1>表示第 1个操作数与第0个操作数类型相同。
+ - 定义：SDNode 是 LLVM 中的一个类，表示 SelectionDAG 中的一个节点。每个节点对应于某个操作或指令，例如加法、减法、乘法、除法等。
+ - 功能：
+	- SDNode 包含了节点的**类型、操作数、结果**等信息。
+	- 它可以有多个操作数和多个结果，通常用于表示一个具体的计算或操作。
+	- 每个 SDNode 还包含位置信息（如调试信息）和其他元数据。
+ - 结构：SDNode 是一个复杂的数据结构，负责描述一个操作的执行方式及其输入输出。
 
-## 2.3 td文件中的模式定义
+####常用方法
+	// 顾名思义，获取节点N的操作码
+	unsigned Opc = N->getOpcode();
+
+	// 获取输出值的类型
+	EVT Ty = N->getValueType(0);
+
+###(4)chain和glue
+
+chain一般是给SDValue起的名字，是一类特殊的SDValue,可以起到约束顺序的作用。例如B有一个chain输入来自于A,那么B就一定在A之后执行
+
+glue是胶水的意思，表示黏在一起，也是一种SDValue,对执行顺序的约束，若B有一个glue来自于A,那么AB之间就不允许插入别的操作。
+
+###(5) 类型SelectionDAG
+
+#### 方法1: 替换某节点所有使用者
+	DAG.ReplaceAllUsesOfValueWith(SDValue(N, 0), CopyFromLo);
+	解释：将所有对使用SDNode N的第0个输出(SDValue)的使用改为对SDValue CopyFromLo的使用
+
+
+
+## 2.2 td文件中常见的模式
+[tablegen参考](https://llvm.org/docs/TableGen/ProgRef.html)
 
 ### (1) 带有set语句的模式
 (set Dest, Src) 表示将 Src 赋值给 Dest，其中 Dest 是输出寄存器，Src 是执行某种操作的结果。接下来举个例子：
@@ -108,3 +160,11 @@ InstrItinClass 是 LLVM 后端中用于描述处理器指令流水线行为的�
 
 
 首先一个小括号内部存放一种格式，一个中括号里可以存放一堆小括号。
+
+###(2) SDTypeProfile
+
+这是用在.td中的，是节点的类型配置文件，用来约束操作数数量和类型。
+
+	def SDT_Cpu0DivRem : SDTypeProfile<0, 2, [SDTCisInt<0>, SDTCisSameAs<0, 1>] >;
+
+这里0表示输出数量为0，2表示输入数量为2，SDTCinInt<0>限制第0个操作数是int型，SDTCisSameAs<0, 1>表示第 1个操作数与第0个操作数类型相同。
